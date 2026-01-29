@@ -1,0 +1,19 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "Federated-Random-Survival-Forest"
+version = "0.0.0"
+description = "Implementation of Federated Random Survival Forest"
+readme = "README.md"
+requires-python = ">=3.8"
+license = { text = "MIT" }
+authors = [
+  { name = "Jonas Harriehausen", email = "jonas.harriehausen@uni-giessen.de" },
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/frsf"]
+
+dependencies = ["scikit-survival>=0.26.0", "pandas>=3.0.0"]
