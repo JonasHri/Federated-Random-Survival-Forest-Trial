@@ -1,5 +1,5 @@
 import pandas as pd
-from random import shuffle
+import random
 
 
 def federate_data(
@@ -7,9 +7,10 @@ def federate_data(
     y: pd.DataFrame,
     n_clients: int,
     drop_cols_precentage: float = 0.3,
+    random_state: int = None,
 ):
     idx = list(X.index)
-    shuffle(idx)
+    random.Random(random_state).shuffle(idx)
     X = X.loc[idx].reset_index(drop=True)
     y = y[idx]
 
@@ -24,6 +25,7 @@ def federate_data(
         X_cur = X.iloc[start:end]
         cols_to_drop = X_cur.columns.to_series().sample(
             frac=drop_cols_precentage,
+            random_state=random_state,
         )
 
         X_cur = X_cur.drop(columns=cols_to_drop)
