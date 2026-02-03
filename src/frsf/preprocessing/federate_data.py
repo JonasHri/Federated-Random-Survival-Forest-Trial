@@ -1,5 +1,5 @@
 import pandas as pd
-import random
+import numpy as np
 
 
 def federate_data(
@@ -9,8 +9,13 @@ def federate_data(
     drop_cols_precentage: float = 0.3,
     random_state: int = None,
 ):
+    if random_state:
+        rng = np.random.default_rng(random_state)
+    else:
+        rng = np.random
+
     idx = list(X.index)
-    random.Random(random_state).shuffle(idx)
+    rng.shuffle(idx)
     X = X.loc[idx].reset_index(drop=True)
     y = y[idx]
 
