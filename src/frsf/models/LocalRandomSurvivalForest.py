@@ -23,5 +23,5 @@ class LocalRandomSurvivalForest(RandomSurvivalForest):
         joblib.dump(self, path)
 
     @classmethod
-    def from_file(cls, path) -> Self:
+    def load(cls, path) -> Self:
         return joblib.load(path)
