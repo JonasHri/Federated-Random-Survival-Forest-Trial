@@ -3,3 +3,4 @@ from frsf.models import (
     LocalRandomSurvivalForest,
     FederatedRandomSurvivalForest,
 )
+from frsf.testing import create_dummy_data
