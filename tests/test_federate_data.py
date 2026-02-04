@@ -32,13 +32,14 @@ def test_random_state(random_state: int):
 
 @pytest.mark.parametrize("drop_percentage", [0, 0.3, 0.5, 0.9, 1])
 def test_drop_percentage(drop_percentage):
+    random_state = 0
     n_samples = 1000
     n_features = 10
 
     X, y = create_dummy_data(
         n_samples,
         n_features,
-        random_state=0,
+        random_state=random_state,
     )
 
     X_list, _ = federate_data(
@@ -46,7 +47,7 @@ def test_drop_percentage(drop_percentage):
         y,
         clients=3,
         drop_feature_percentage=drop_percentage,
-        random_state=0,
+        random_state=random_state,
     )
 
     for X_fed in X_list:
@@ -55,20 +56,21 @@ def test_drop_percentage(drop_percentage):
 
 @pytest.mark.parametrize("clients", [1, 2, 4, 8, 16])
 def test_clients_int(clients):
+    random_state = 0
     n_samples = 1000
     n_features = 10
 
     X, y = create_dummy_data(
         n_samples,
         n_features,
-        random_state=0,
+        random_state=random_state,
     )
 
     X_list, y_list = federate_data(
         X,
         y,
         clients=clients,
-        random_state=0,
+        random_state=random_state,
     )
 
     assert len(X_list) == len(y_list) == clients
@@ -86,20 +88,21 @@ def test_clients_int(clients):
     "clients", [[1000], [800, 200], [100, 100, 800], [5, 995], [5, 5, 5, 5, 980]]
 )
 def test_clients_list(clients):
+    random_state = 0
     n_samples = sum(clients)
     n_features = 10
 
     X, y = create_dummy_data(
         n_samples,
         n_features,
-        random_state=0,
+        random_state=random_state,
     )
 
     X_list, y_list = federate_data(
         X,
         y,
         clients=clients,
-        random_state=0,
+        random_state=random_state,
     )
 
     assert len(X_list) == len(y_list) == len(clients)
@@ -114,13 +117,14 @@ def test_clients_list(clients):
 
 
 def test_shuffle_sync():
+    random_state = 0
     n_samples = 1000
     n_features = 10
 
     X, y = create_dummy_data(
         n_samples,
         n_features,
-        random_state=0,
+        random_state=random_state,
     )
     X[0] = np.arange(len(X))
     y["Survival_in_days"] = np.arange(len(y))
@@ -129,7 +133,7 @@ def test_shuffle_sync():
         X,
         y,
         clients=3,
-        random_state=0,
+        random_state=random_state,
     )
 
     for X_fed, y_fed in zip(X_list, y_list):

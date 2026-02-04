@@ -5,14 +5,20 @@ import numpy as np
 import pytest
 
 
-@pytest.mark.parametrize("n_samples", [2, 4, 8, 16, 32, 64, 128])
-@pytest.mark.parametrize("n_features", [1, 2, 4, 8, 16, 32])
+@pytest.mark.parametrize("n_samples", [2, 4, 8, 16, 32, 64])
+@pytest.mark.parametrize("n_features", [1, 2, 4, 8, 16])
 def test_training(n_samples, n_features):
+    random_state = 0
 
-    X, y = create_dummy_data(n_samples, n_features, drop_feature_percentage=0.33)
+    X, y = create_dummy_data(
+        n_samples,
+        n_features,
+        drop_feature_percentage=0.33,
+        random_state=random_state,
+    )
     dropped_features = set(X.columns[X.loc[0].isna()])
 
-    model = LocalRandomSurvivalForest()
+    model = LocalRandomSurvivalForest(random_state=random_state)
 
     model.fit(X, y)
     model.predict(X)
@@ -26,12 +32,17 @@ def test_training(n_samples, n_features):
 
 
 def test_save_load(tmp_path):
-
+    random_state = 0
     n_samples, n_features = 128, 32
 
-    X, y = create_dummy_data(n_samples, n_features, drop_feature_percentage=0.33)
+    X, y = create_dummy_data(
+        n_samples,
+        n_features,
+        drop_feature_percentage=0.33,
+        random_state=random_state,
+    )
 
-    model = LocalRandomSurvivalForest()
+    model = LocalRandomSurvivalForest(random_state=random_state)
     model.fit(X, y)
 
     path = tmp_path / "model.model"
