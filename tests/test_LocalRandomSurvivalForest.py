@@ -9,7 +9,7 @@ import pytest
 @pytest.mark.parametrize("n_features", [1, 2, 4, 8, 16, 32])
 def test_training(n_samples, n_features):
 
-    X, y = create_dummy_data(n_samples, n_features, drop_feature_percent=0.33)
+    X, y = create_dummy_data(n_samples, n_features, drop_feature_percentage=0.33)
     dropped_features = set(X.columns[X.loc[0].isna()])
 
     model = LocalRandomSurvivalForest()
@@ -29,7 +29,7 @@ def test_save_load(tmp_path):
 
     n_samples, n_features = 128, 32
 
-    X, y = create_dummy_data(n_samples, n_features, drop_feature_percent=0.33)
+    X, y = create_dummy_data(n_samples, n_features, drop_feature_percentage=0.33)
 
     model = LocalRandomSurvivalForest()
     model.fit(X, y)

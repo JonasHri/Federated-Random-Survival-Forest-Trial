@@ -8,7 +8,7 @@ def create_dummy_data(
     n_samples: int,
     n_features: int,
     cencor_chance: float = 0.15,
-    drop_feature_percent: float = 0.0,
+    drop_feature_percentage: float = 0.0,
     random_state: Union[int, np.random.Generator] = None,
 ) -> tuple[pd.DataFrame, np.ndarray]:
 
@@ -18,7 +18,7 @@ def create_dummy_data(
     cencor_features = list(
         rng.choice(
             n_features,
-            int(n_features * drop_feature_percent),
+            int(n_features * drop_feature_percentage),
             replace=False,
         )
     )
