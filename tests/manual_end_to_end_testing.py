@@ -1,5 +1,6 @@
 # %%
-from frsf.preprocessing import federate_data, align_schema
+from frsf.preprocessing import align_schema
+from frsf.testing import federate_data
 from frsf.models import (
     LocalRandomSurvivalForest,
     FederatedRandomSurvivalForest,
