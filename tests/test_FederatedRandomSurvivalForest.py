@@ -86,3 +86,10 @@ def test_save_load(tmp_path):
     assert all(
         f == f2 for f, f2 in zip(fed_model.tree_features, loaded_model.tree_features)
     ), "tree_features"
+
+    def test_no_fit_predict():
+        fed_model = FederatedRandomSurvivalForest(local_models=local_models)
+        with pytest.raises(NotImplementedError):
+            fed_model.fit(X, y)
+        with pytest.raises(NotImplementedError):
+            fed_model.predict(X)
