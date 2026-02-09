@@ -1,7 +1,8 @@
 from sksurv.ensemble import RandomSurvivalForest
 from sksurv.tree import SurvivalTree
 import numpy as np
-from typing import Literal, Self
+from typing import Literal, Optional, Self
+from numpy.typing import ArrayLike
 import joblib
 import pandas as pd
 
@@ -25,7 +26,7 @@ class LocalRandomSurvivalForest(RandomSurvivalForest):
         self,
         X: pd.DataFrame,
         y: pd.DataFrame,
-        sample_weight=None,
+        sample_weight: Optional[ArrayLike] = None,
     ) -> Self:
         self.site_size: int = len(X)
         self.local_features = set(X.columns[~X.isna().all()].tolist())
@@ -49,12 +50,12 @@ class LocalRandomSurvivalForest(RandomSurvivalForest):
         self.estimators_ = self.local_estimators
         self.n_estimators = len(self.estimators_)
 
-    def use_federated_estimators(self, random_state: int = None):
-        if random_state is None:
-            random_state = self.random_state
-
+    def use_federated_estimators(self, random_state: Optional[int] = None):
         if self.tree_origin == "federated":
             return self
+
+        if random_state is None:
+            random_state = self.random_state
 
         self.local_estimators = self.estimators_
         self.tree_origin = "federated"
@@ -122,7 +123,7 @@ class FederatedRandomSurvivalForest(RandomSurvivalForest):
     def predict(self, X):
         raise NotImplementedError("Federated model cannot predict directly.")
 
-    def distribute_trees(self, random_state: int = None):
+    def distribute_trees(self, random_state: Optional[int] = None):
         for model in self.local_models:
             valid_estimators = []
             for estimator, feat_set in zip(self.estimators_, self.tree_features):

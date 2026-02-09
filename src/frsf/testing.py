@@ -1,7 +1,8 @@
 import warnings
 import numpy as np
 import pandas as pd
-from typing import Union
+from typing import Union, Optional
+from numpy.typing import ArrayLike
 
 
 def create_dummy_data(
@@ -9,7 +10,7 @@ def create_dummy_data(
     n_features: int,
     cencor_chance: float = 0.15,
     drop_feature_percentage: float = 0.0,
-    random_state: Union[int, np.random.Generator] = None,
+    random_state: Optional[Union[int, np.random.Generator]] = None,
 ) -> tuple[pd.DataFrame, np.ndarray]:
 
     rng = np.random.default_rng(random_state)
@@ -44,9 +45,9 @@ def create_dummy_data(
 def federate_data(
     X: pd.DataFrame,
     y: np.ndarray,
-    clients: Union[int, list[int]],
+    clients: Union[int, ArrayLike[int]],
     drop_feature_percentage: float = 0.3,
-    random_state: int = None,
+    random_state: Optional[int] = None,
 ):
     rng = np.random.default_rng(random_state)
 
