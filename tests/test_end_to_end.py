@@ -29,8 +29,13 @@ def test_end_to_end(n_samples_per_client, n_features, update_method, update_weig
         random_state=random_state,
     )
 
-    schema = SchemaCreator().fit_transform([X_fed.columns for X_fed in X_list])
-    X_list = [SchemaAligner().fit_transform(X_fed, schema) for X_fed in X_list]
+    schema, column_maps = SchemaCreator(anonymize=True).fit_transform(
+        [X_fed.columns for X_fed in X_list]
+    )
+    X_list = [
+        SchemaAligner().fit_transform(X_fed, schema, column_map=column_map)
+        for X_fed, column_map in zip(X_list, column_maps)
+    ]
 
     local_models: list[LocalRandomSurvivalForest] = []
     local_predictions = []

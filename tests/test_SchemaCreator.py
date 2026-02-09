@@ -1,3 +1,4 @@
+# %%
 from frsf.preprocessing import SchemaCreator, SchemaAligner
 from frsf.testing import create_dummy_data, federate_data
 import pytest
@@ -13,7 +14,9 @@ def test_alignment(random_state):
         X, y, 5, drop_feature_percentage=0.3, random_state=random_state
     )
 
-    schema = SchemaCreator().fit_transform([X_fed.columns for X_fed in X_list])
+    schema, column_maps = SchemaCreator().fit_transform(
+        [X_fed.columns for X_fed in X_list]
+    )
 
     X_aligned_list = []
 
@@ -23,3 +26,52 @@ def test_alignment(random_state):
 
     for X_aligned in X_aligned_list[1:]:
         assert (X_aligned.columns == X_aligned_list[0].columns).all()
+
+
+@pytest.mark.parametrize("anoymize", [True, False])
+def test_add_client(anoymize):
+    creator = SchemaCreator(anonymize=anoymize, extra_columns=5, random_state=0)
+
+    local_features = [
+        ["age", "gender", "blood_pressure"],
+        ["age", "cholesterol", "smoking_status"],
+        ["gender", "cholesterol", "exercise_frequency"],
+    ]
+
+    creator.fit_transform(local_features)
+
+    creator.add_client(["age", "0"])
+    creator.add_client(["1", "2", "3"])
+    creator.add_client(["2", "3", "4"])
+    with pytest.raises(ValueError):
+        creator.add_client(["4", "5"])
+
+
+@pytest.mark.parametrize("anoymize", [True, False])
+@pytest.mark.parametrize("random_state", [0, 1, 2, 3, 4, 5, 6, None])
+def test_random_state(anonymize, random_state):
+    creator1 = SchemaCreator(
+        anonymize=anonymize,
+        extra_columns=5,
+        random_state=random_state,
+    )
+    creator2 = SchemaCreator(
+        anonymize=anonymize,
+        extra_columns=5,
+        random_state=random_state,
+    )
+
+    local_features = [
+        ["age", "gender", "blood_pressure"],
+        ["age", "cholesterol", "smoking_status"],
+        ["gender", "cholesterol", "exercise_frequency"],
+    ]
+
+    schema1, column_maps1 = creator1.fit_transform(local_features)
+    schema2, column_maps2 = creator2.fit_transform(local_features)
+
+    if random_state is not None:
+        assert schema1 == schema2
+        assert column_maps1 == column_maps2
+    else:
+        assert not schema1 == schema2 or column_maps1 != column_maps2
