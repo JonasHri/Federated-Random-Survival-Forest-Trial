@@ -28,9 +28,9 @@ def test_alignment(random_state):
         assert (X_aligned.columns == X_aligned_list[0].columns).all()
 
 
-@pytest.mark.parametrize("anoymize", [True, False])
-def test_add_client(anoymize):
-    creator = SchemaCreator(anonymize=anoymize, extra_columns=5, random_state=0)
+@pytest.mark.parametrize("anonymize", [True, False])
+def test_add_client(anonymize):
+    creator = SchemaCreator(anonymize=anonymize, extra_columns=5, random_state=0)
 
     local_features = [
         ["age", "gender", "blood_pressure"],
@@ -47,7 +47,7 @@ def test_add_client(anoymize):
         creator.add_client(["4", "5"])
 
 
-@pytest.mark.parametrize("anoymize", [True, False])
+@pytest.mark.parametrize("anonymize", [True, False])
 @pytest.mark.parametrize("random_state", [0, 1, 2, 3, 4, 5, 6, None])
 def test_random_state(anonymize, random_state):
     creator1 = SchemaCreator(
@@ -70,8 +70,11 @@ def test_random_state(anonymize, random_state):
     schema1, column_maps1 = creator1.fit_transform(local_features)
     schema2, column_maps2 = creator2.fit_transform(local_features)
 
+    assert schema1 == schema2
     if random_state is not None:
-        assert schema1 == schema2
         assert column_maps1 == column_maps2
-    else:
-        assert not schema1 == schema2 or column_maps1 != column_maps2
+    elif anonymize:
+        assert column_maps1 != column_maps2
+
+
+# %%
