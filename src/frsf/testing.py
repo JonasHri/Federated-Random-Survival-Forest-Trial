@@ -1,3 +1,4 @@
+# %%
 import warnings
 import numpy as np
 import pandas as pd
@@ -45,7 +46,7 @@ def create_dummy_data(
 def federate_data(
     X: pd.DataFrame,
     y: np.ndarray,
-    clients: Union[int, ArrayLike[int]],
+    clients: Union[int, ArrayLike],
     drop_feature_percentage: float = 0.3,
     random_state: Optional[int] = None,
 ):
@@ -93,3 +94,6 @@ def federate_data(
         X_splits.append(X_cur)
         y_splits.append(y[start:end])
     return X_splits, y_splits
+
+
+# %%
