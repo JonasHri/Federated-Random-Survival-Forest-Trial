@@ -146,6 +146,21 @@ class LocalRandomSurvivalForest(RandomSurvivalForest):
 
     Attributes
     ----------
+
+    site_size : int
+        The number of samples in the local dataset.
+        Available after fitting the model.
+
+    local_features : set
+        The set of features that are available in the local dataset.
+        Available after fitting the model.
+
+    all_features : list
+        The list of all features in the order they are used in the model.
+        Available after fitting the model.
+
+
+
     estimators_ : list of SurvivalTree instances
         The collection of fitted sub-estimators.
 
@@ -166,6 +181,7 @@ class LocalRandomSurvivalForest(RandomSurvivalForest):
     Methods
     -------
     set_federated_estimators(estimators)
+        Sets the federated estimators to be used for updating the local model.
 
     use_federal_estimators()
         Switches the local model to use trees trained on federated sites.
@@ -204,10 +220,10 @@ class LocalRandomSurvivalForest(RandomSurvivalForest):
     References
     ----------
     .. [1] Ishwaran, H., Kogalur, U. B., Blackstone, E. H., & Lauer, M. S. (2008).
-           Random survival forests. The Annals of Applied Statistics, 2(3), 841–860.
+           Random survival forests. The Annals of Applied Statistics, 2(3), 841-860.
 
     .. [2] Ishwaran, H., Kogalur, U. B. (2007). Random survival forests for R.
-           R News, 7(2), 25–31. https://cran.r-project.org/doc/Rnews/Rnews_2007-2.pdf.
+           R News, 7(2), 25-31. https://cran.r-project.org/doc/Rnews/Rnews_2007-2.pdf.
     """
 
     def __init__(
@@ -218,7 +234,7 @@ class LocalRandomSurvivalForest(RandomSurvivalForest):
     ):
         super().__init__(**kwargs)
         self.local_features: set = set()
-        self.federated_estimators: list[SurvivalTree] = []
+        self._federated_estimators: list[SurvivalTree] = []
         self.site_size: int = 0
         self.update_method = update_method
         self.update_weighting = update_weighting
@@ -240,7 +256,7 @@ class LocalRandomSurvivalForest(RandomSurvivalForest):
         return self
 
     def set_federated_estimators(self, estimators: list[SurvivalTree]):
-        self.federated_estimators = estimators
+        self._federated_estimators = estimators
         return self
 
     def use_local_estimators(self):
@@ -249,7 +265,7 @@ class LocalRandomSurvivalForest(RandomSurvivalForest):
 
         self.tree_origin = "local"
 
-        self.estimators_ = self.local_estimators
+        self.estimators_ = self._local_estimators
         self.n_estimators = len(self.estimators_)
 
     def use_federated_estimators(self, random_state: Optional[int] = None):
@@ -259,21 +275,21 @@ class LocalRandomSurvivalForest(RandomSurvivalForest):
         if random_state is None:
             random_state = self.random_state
 
-        self.local_estimators = self.estimators_
+        self._local_estimators = self.estimators_
         self.tree_origin = "federated"
 
         if self.update_method == "all":
-            self.estimators_ = self.federated_estimators
+            self.estimators_ = self._federated_estimators
 
         elif self.update_method == "constant":
             if self.update_weighting == "equal":
-                weights: list[float] = [1.0] * len(self.federated_estimators)
+                weights: list[float] = [1.0] * len(self._federated_estimators)
             elif self.update_weighting == "site_size":
                 weights: list[float] = [
-                    estimator.sample_weight for estimator in self.federated_estimators
+                    estimator.sample_weight for estimator in self._federated_estimators
                 ]
             self.estimators_ = np.random.default_rng(random_state).choice(
-                self.federated_estimators,
+                self._federated_estimators,
                 size=self.n_estimators,
                 p=np.array(weights) / sum(weights),
             )
@@ -290,6 +306,63 @@ class LocalRandomSurvivalForest(RandomSurvivalForest):
 
 
 class FederatedRandomSurvivalForest(RandomSurvivalForest):
+    """A federatedrandom survival forest.
+
+    A federated random survival forest is a helper class
+    that aggregates and distributes the estimators of
+    multiple local random survival forests.
+
+    See the :ref:`User Guide </user_guide/random-survival-forest.ipynb>`,
+    [1]_ and [2]_ for further description.
+
+    Parameters
+    ----------
+    local_models: list of LocalRandomSurvivalForest instances
+        The local random survival forests to aggregate.
+
+    Attributes
+    ----------
+    local_models: list of LocalRandomSurvivalForest instances
+        The local random survival forests that are aggregated.
+
+    estimators_ : list of SurvivalTree instances
+        The collection of fitted sub-estimators from all local models.
+
+    n_estimators : int
+        The total number of trees in the federated model, which is
+        the sum of the number of trees in all local models.
+
+    tree_features: list of sets
+        The features used by each tree in estimators_.
+
+
+    Methods
+    -------
+
+    add_local_model(local_model)
+        Adds a local random survival forest to the federated model and
+        updates the collection of estimators and their features.
+
+    distribute_trees()
+        Distributes the federated trees to the local models based on
+        the features used by each tree and the features available locally.
+
+
+    See also
+    --------
+    sksurv.tree.SurvivalTree
+        A single survival tree.
+
+
+    References
+    ----------
+    .. [1] Ishwaran, H., Kogalur, U. B., Blackstone, E. H., & Lauer, M. S. (2008).
+           Random survival forests. The Annals of Applied Statistics, 2(3), 841-860.
+
+    .. [2] Ishwaran, H., Kogalur, U. B. (2007). Random survival forests for R.
+           R News, 7(2), 25-31. https://cran.r-project.org/doc/Rnews/Rnews_2007-2.pdf.
+    """
+
     def __init__(
         self,
         local_models: list[LocalRandomSurvivalForest],
@@ -325,7 +398,7 @@ class FederatedRandomSurvivalForest(RandomSurvivalForest):
     def predict(self, X):
         raise NotImplementedError("Federated model cannot predict directly.")
 
-    def distribute_trees(self, random_state: Optional[int] = None):
+    def distribute_trees(self):
         for model in self.local_models:
             valid_estimators = []
             for estimator, feat_set in zip(self.estimators_, self.tree_features):
