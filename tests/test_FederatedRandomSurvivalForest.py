@@ -41,8 +41,8 @@ def test_distribute():
 
     for local_model in local_models:
         assert hasattr(
-            local_model, "federated_estimators"
-        ), "federated_estimators_ attribute"
+            local_model, "_federated_estimators"
+        ), "_federated_estimators attribute"
 
 
 def test_save_load(tmp_path):

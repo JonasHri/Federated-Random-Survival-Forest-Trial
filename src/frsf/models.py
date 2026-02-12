@@ -3,11 +3,11 @@ from sksurv.tree import SurvivalTree
 import numpy as np
 from typing import Literal, Optional, Self
 from numpy.typing import ArrayLike
-import joblib
 import pandas as pd
+from .persistence import SaveLoadMixin
 
 
-class LocalRandomSurvivalForest(RandomSurvivalForest):
+class LocalRandomSurvivalForest(RandomSurvivalForest, SaveLoadMixin):
     """A local random survival forest.
 
     A local random survival forest is a meta estimator that fits a number of
@@ -159,8 +159,6 @@ class LocalRandomSurvivalForest(RandomSurvivalForest):
         The list of all features in the order they are used in the model.
         Available after fitting the model.
 
-
-
     estimators_ : list of SurvivalTree instances
         The collection of fitted sub-estimators.
 
@@ -246,6 +244,22 @@ class LocalRandomSurvivalForest(RandomSurvivalForest):
         y: pd.DataFrame,
         sample_weight: Optional[ArrayLike] = None,
     ) -> Self:
+        """
+        Build a forest of survival trees from the training set (X, y).
+        Stores metadata about the local dataset
+        such as the number of samples and the features available,
+        which can be used for updating the model with federated trees.
+
+        Parameters
+        ----------
+        X : array-like, shape = (n_samples, n_features)
+            Data matrix
+
+        y : structured array, shape = (n_samples,)
+            A structured array with two fields. The first field is a boolean
+            where ``True`` indicates an event and ``False`` indicates right-censoring.
+            The second field is a float with the time of event or time of censoring.
+        """
         self.site_size: int = len(X)
         self.local_features = set(X.columns[~X.isna().all()].tolist())
         self.all_features = X.columns.tolist()
@@ -255,11 +269,28 @@ class LocalRandomSurvivalForest(RandomSurvivalForest):
 
         return self
 
-    def set_federated_estimators(self, estimators: list[SurvivalTree]):
+    def set_federated_estimators(self, estimators: list[SurvivalTree]) -> Self:
+        """
+        Sets the federated estimators to be used for updating the local model.
+        This method is intended to be called by the federated model when distributing the federated trees to the local models.
+
+        Parameters
+        ----------
+        estimators : list of SurvivalTree instances
+            The federated estimators to be used for updating the local model.
+        """
+
         self._federated_estimators = estimators
         return self
 
-    def use_local_estimators(self):
+    def use_local_estimators(self) -> Self:
+        """
+        Switches the local model to use only the trees trained locally.
+        This method can be used to switch back to the local trees after
+        using the federated trees, which can be useful for evaluating
+        the performance of the local model
+        before and after updating with federated trees.
+        """
         if self.tree_origin == "local":
             return self
 
@@ -267,8 +298,20 @@ class LocalRandomSurvivalForest(RandomSurvivalForest):
 
         self.estimators_ = self._local_estimators
         self.n_estimators = len(self.estimators_)
+        return self
 
-    def use_federated_estimators(self, random_state: Optional[int] = None):
+    def use_federated_estimators(self, random_state: Optional[int] = None) -> Self:
+        """
+        Switches the local model to use trees trained on federated sites.
+        This method can be used to update the local model with federated trees,
+
+        Parameters
+        ----------
+        random_state : int, optional, default: None
+            The random state to use for sampling federated trees when the "constant" update method is used.
+            This parameter is only relevant when `update_method` is set to "constant".
+            If None, the random state will be determined by the `random_state` attribute of the model.
+        """
         if self.tree_origin == "federated":
             return self
 
@@ -297,15 +340,8 @@ class LocalRandomSurvivalForest(RandomSurvivalForest):
         self.n_estimators = len(self.estimators_)
         return self
 
-    def save(self, path):
-        joblib.dump(self, path)
 
-    @classmethod
-    def load(cls, path) -> Self:
-        return joblib.load(path)
-
-
-class FederatedRandomSurvivalForest(RandomSurvivalForest):
+class FederatedRandomSurvivalForest(RandomSurvivalForest, SaveLoadMixin):
     """A federatedrandom survival forest.
 
     A federated random survival forest is a helper class
@@ -322,12 +358,12 @@ class FederatedRandomSurvivalForest(RandomSurvivalForest):
 
     Parameters
     ----------
-    local_models: list of LocalRandomSurvivalForest instances
+    local_models : list of LocalRandomSurvivalForest instances
         The local random survival forests to aggregate.
 
     Attributes
     ----------
-    local_models: list of LocalRandomSurvivalForest instances
+    local_models : list of LocalRandomSurvivalForest instances
         The local random survival forests that are aggregated.
 
     estimators_ : list of SurvivalTree instances
@@ -340,10 +376,8 @@ class FederatedRandomSurvivalForest(RandomSurvivalForest):
     tree_features: list of sets
         The features used by each tree in estimators_.
 
-
     Methods
     -------
-
     add_local_model(local_model)
         Adds a local random survival forest to the federated model and
         updates the collection of estimators and their features.
@@ -352,12 +386,10 @@ class FederatedRandomSurvivalForest(RandomSurvivalForest):
         Distributes the federated trees to the local models based on
         the features used by each tree and the features available locally.
 
-
     See also
     --------
     sksurv.tree.SurvivalTree
         A single survival tree.
-
 
     References
     ----------
@@ -382,7 +414,19 @@ class FederatedRandomSurvivalForest(RandomSurvivalForest):
         for model in local_models:
             self.add_local_model(model)
 
-    def add_local_model(self, local_model: LocalRandomSurvivalForest):
+    def add_local_model(self, local_model: LocalRandomSurvivalForest) -> Self:
+        """
+        Adds a local random survival forest to the federated model and
+        updates the collection of estimators and their features.
+
+        This method can be used to incrementally add local models to the federated model,
+        which can be useful in a dynamic federated learning setting where new clients may join over time.
+
+        Parameters
+        ----------
+        local_model : LocalRandomSurvivalForest
+            The local random survival forest to add to the federated model.
+        """
         local_tree_features = []
         for estimator in local_model.estimators_:
             tree_features = estimator.tree_.feature
@@ -403,7 +447,13 @@ class FederatedRandomSurvivalForest(RandomSurvivalForest):
     def predict(self, X):
         raise NotImplementedError("Federated model cannot predict directly.")
 
-    def distribute_trees(self):
+    def distribute_trees(self) -> list[LocalRandomSurvivalForest]:
+        """
+        Distributes the federated trees to the local models based on
+        the features used by each tree and the features available locally.
+        Each local model will receive the trees that only use features available locally.
+        This method should be called after all local models have been added to the federated model.
+        """
         for model in self.local_models:
             valid_estimators = []
             for estimator, feat_set in zip(self.estimators_, self.tree_features):
@@ -413,9 +463,4 @@ class FederatedRandomSurvivalForest(RandomSurvivalForest):
 
             model.set_federated_estimators(valid_estimators)
 
-    def save(self, path):
-        joblib.dump(self, path)
-
-    @classmethod
-    def load(cls, path) -> Self:
-        return joblib.load(path)
+        return self.local_models

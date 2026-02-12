@@ -11,8 +11,29 @@ def create_dummy_data(
     n_features: int,
     cencor_chance: float = 0.15,
     drop_feature_percentage: float = 0.0,
-    random_state: Optional[Union[int, np.random.Generator]] = None,
+    random_state: Optional[int] = None,
 ) -> tuple[pd.DataFrame, np.ndarray]:
+    """
+    Function to create dummy data for testing purposes.
+    It generates a DataFrame of features and a structured array of target values for survival analysis.
+    Parameters
+    ----------
+    n_samples : int
+        The number of samples to generate.
+    n_features : int
+        The number of features to generate.
+    cencor_chance : float, default=0.15
+        The probability that a sample is censored (i.e., has a status of False).
+    drop_feature_percentage : float, default=0.0
+        The percentage of features to randomly drop (set to NaN) to simulate missing data or non-IID conditions.
+    random_state : int, default=None
+        The random state to use for reproducibility.
+
+    Returns
+    -------
+    tuple[pd.DataFrame, np.ndarray]
+        A tuple containing a DataFrame of features and a structured array of target values for survival analysis
+    """
 
     rng = np.random.default_rng(random_state)
 
@@ -50,6 +71,34 @@ def federate_data(
     drop_feature_percentage: float = 0.3,
     random_state: Optional[int] = None,
 ):
+    """
+    Function to artificially federate data for testing purposes.
+    It splits the data into the specified number of clients
+    and randomly drops a percentage of features for each client
+    to simulate non-IID data.
+
+    Parameters
+    ----------
+    X : pd.DataFrame
+        The feature data to be federated.
+
+    y : np.ndarray
+        The target data to be federated.
+
+    clients : int or list[int]
+        The number of clients to split the data into, or a list of client sizes.
+
+    drop_feature_percentage : float, default=0.3
+        The percentage of features to randomly drop for each client to simulate non-IID data.
+
+    random_state : int, default=None
+        The random state to use for reproducibility.
+
+    Returns
+    -------
+    tuple[list[pd.DataFrame], list[np.ndarray]]
+        A tuple containing two lists: the first list contains the feature DataFrames for each client, and the second list contains the target arrays for each client.
+    """
     rng = np.random.default_rng(random_state)
 
     if isinstance(clients, int):
