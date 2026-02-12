@@ -312,6 +312,11 @@ class FederatedRandomSurvivalForest(RandomSurvivalForest):
     that aggregates and distributes the estimators of
     multiple local random survival forests.
 
+    This class is not intended to be fit or used for prediction directly.
+    Instead, it serves as a container for the local models and their trees.
+    It provides methods to distribute the federated trees to the local models
+    based on the features used by each tree and the features available locally.
+
     See the :ref:`User Guide </user_guide/random-survival-forest.ipynb>`,
     [1]_ and [2]_ for further description.
 
