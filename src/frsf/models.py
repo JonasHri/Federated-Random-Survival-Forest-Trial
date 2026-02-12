@@ -8,6 +8,208 @@ import pandas as pd
 
 
 class LocalRandomSurvivalForest(RandomSurvivalForest):
+    """A local random survival forest.
+
+    A local random survival forest is a meta estimator that fits a number of
+    survival trees on various sub-samples of the dataset and uses
+    averaging to improve the predictive accuracy and control over-fitting.
+    The sub-sample size is always the same as the original input sample
+    size but the samples are drawn with replacement if
+    `bootstrap=True` (default).
+
+    It is an extension of the random survival forest described in [1]_ and [2]_,
+    which is a generalization of the random forest method to
+    analyze right-censored survival data.
+
+    This extension provides the ability to update the local model
+    with trees trained on other sites,
+    which can be used in a federated learning setting.
+    The local model can switch between using its own trees and the federated trees
+    based on the specified update method and weighting scheme.
+
+    In each survival tree, the quality of a split is measured by the
+    log-rank splitting rule.
+
+    See the :ref:`User Guide </user_guide/random-survival-forest.ipynb>`,
+    [1]_ and [2]_ for further description.
+
+    Parameters
+    ----------
+    update_method: str Literal "constant" or "all", default: "all"
+        The method to use when updating the local model with federated trees.
+            - "constant": maintain the same number of trees as specified
+            by `n_estimators`by randomly sampling from the federated trees
+            according to the specified weighting scheme.
+            - "all": use all federated trees,
+            which may result in a different number of trees
+            than specified by `n_estimators`.
+
+    update_weighting: str Literal "equal" or "site_size", default: "equal",
+        The weighting scheme to use when sampling federated trees for the "constant" update method.
+            - "equal": sample federated trees with equal probability.
+            - "site_size": sample federated trees with probability
+            proportional to the size of the site that trained the tree.
+
+    n_estimators : int, optional, default: 100
+        The number of trees in the forest.
+
+    max_depth : int or None, optional, default: None
+        The maximum depth of the tree. If None, then nodes are expanded until
+        all leaves are pure or until all leaves contain less than
+        min_samples_split samples.
+
+    min_samples_split : int, float, optional, default: 6
+        The minimum number of samples required to split an internal node:
+
+        - If int, then consider `min_samples_split` as the minimum number.
+        - If float, then `min_samples_split` is a fraction and
+          `ceil(min_samples_split * n_samples)` are the minimum
+          number of samples for each split.
+
+    min_samples_leaf : int, float, optional, default: 3
+        The minimum number of samples required to be at a leaf node.
+        A split point at any depth will only be considered if it leaves at
+        least ``min_samples_leaf`` training samples in each of the left and
+        right branches.  This may have the effect of smoothing the model,
+        especially in regression.
+
+        - If int, then consider `min_samples_leaf` as the minimum number.
+        - If float, then `min_samples_leaf` is a fraction and
+          `ceil(min_samples_leaf * n_samples)` are the minimum
+          number of samples for each node.
+
+    min_weight_fraction_leaf : float, optional, default: 0.
+        The minimum weighted fraction of the sum total of weights (of all
+        the input samples) required to be at a leaf node. Samples have
+        equal weight when sample_weight is not provided.
+
+    max_features : int, float, {'sqrt', 'log2'} or None, optional, default: 'sqrt'
+        The number of features to consider when looking for the best split:
+
+        - If int, then consider `max_features` features at each split.
+        - If float, then `max_features` is a fraction and
+          `int(max_features * n_features)` features are considered at each
+          split.
+        - If "sqrt", then `max_features=sqrt(n_features)`.
+        - If "log2", then `max_features=log2(n_features)`.
+        - If None, then `max_features=n_features`.
+
+        Note: the search for a split does not stop until at least one
+        valid partition of the node samples is found, even if it requires to
+        effectively inspect more than ``max_features`` features.
+
+    max_leaf_nodes : int or None, optional, default: None
+        Grow a tree with ``max_leaf_nodes`` in best-first fashion.
+        Best nodes are defined as relative reduction in impurity.
+        If None then unlimited number of leaf nodes.
+
+    bootstrap : bool, optional, default: True
+        Whether bootstrap samples are used when building trees. If False, the
+        whole dataset is used to build each tree.
+
+    oob_score : bool, optional, default: False
+        Whether to use out-of-bag samples to estimate
+        the generalization accuracy.
+
+    n_jobs : int or None, optional, default: None
+        The number of jobs to run in parallel. :meth:`fit`, :meth:`predict`,
+        :meth:`decision_path` and :meth:`apply` are all parallelized over the
+        trees. ``None`` means 1 unless in a :obj:`joblib.parallel_backend`
+        context. ``-1`` means using all processors.
+
+    random_state : int, RandomState instance or None, optional, default: None
+        Controls both the randomness of the bootstrapping of the samples used
+        when building trees (if ``bootstrap=True``) and the sampling of the
+        features to consider when looking for the best split at each node
+        (if ``max_features < n_features``).
+
+    verbose : int, optional, default: 0
+        Controls the verbosity when fitting and predicting.
+
+    warm_start : bool, optional, default: False
+        When set to ``True``, reuse the solution of the previous call to fit
+        and add more estimators to the ensemble, otherwise, just fit a whole
+        new forest.
+
+    max_samples : int or float, optional, default: None
+        If bootstrap is True, the number of samples to draw from X
+        to train each base estimator.
+
+        - If None (default), then draw `X.shape[0]` samples.
+        - If int, then draw `max_samples` samples.
+        - If float, then draw `max_samples * X.shape[0]` samples. Thus,
+          `max_samples` should be in the interval `(0.0, 1.0]`.
+
+    low_memory : bool, optional, default: False
+        If set, :meth:`predict` computations use reduced memory but :meth:`predict_cumulative_hazard_function`
+        and :meth:`predict_survival_function` are not implemented.
+
+    Attributes
+    ----------
+    estimators_ : list of SurvivalTree instances
+        The collection of fitted sub-estimators.
+
+    unique_times_ : ndarray, shape = (n_unique_times,)
+        Unique time points.
+
+    n_features_in_ : int
+        Number of features seen during ``fit``.
+
+    feature_names_in_ : ndarray, shape = (`n_features_in_`,)
+        Names of features seen during ``fit``. Defined only when `X`
+        has feature names that are all strings.
+
+    oob_score_ : float
+        Concordance index of the training dataset obtained
+        using an out-of-bag estimate.
+
+    Methods
+    -------
+    set_federated_estimators(estimators)
+
+    use_federal_estimators()
+        Switches the local model to use trees trained on federated sites.
+
+    use_local_estimators()
+        Switches the local model to use only the trees trained locally.
+
+    See also
+    --------
+    sksurv.tree.SurvivalTree
+        A single survival tree.
+
+    Notes
+    -----
+    The default values for the parameters controlling the size of the trees
+    (e.g. ``max_depth``, ``min_samples_leaf``, etc.) lead to fully grown and
+    unpruned trees which can potentially be very large on some data sets. To
+    reduce memory consumption, the complexity and size of the trees should be
+    controlled by setting those parameter values.
+
+    Compared to scikit-learn's random forest models, :class:`RandomSurvivalForest`
+    currently does not support controlling the depth of a tree based on the log-rank
+    test statistics or it's associated p-value, i.e., the parameters
+    `min_impurity_decrease` or `min_impurity_split` are absent.
+    In addition, the `feature_importances_` attribute is not available.
+    It is recommended to estimate feature importances via
+    :func:`sklearn.inspection.permutation_importance`.
+
+    The features are always randomly permuted at each split. Therefore,
+    the best found split may vary, even with the same training data,
+    ``max_features=n_features`` and ``bootstrap=False``, if the improvement
+    of the criterion is identical for several splits enumerated during the
+    search of the best split. To obtain a deterministic behavior during
+    fitting, ``random_state`` has to be fixed.
+
+    References
+    ----------
+    .. [1] Ishwaran, H., Kogalur, U. B., Blackstone, E. H., & Lauer, M. S. (2008).
+           Random survival forests. The Annals of Applied Statistics, 2(3), 841–860.
+
+    .. [2] Ishwaran, H., Kogalur, U. B. (2007). Random survival forests for R.
+           R News, 7(2), 25–31. https://cran.r-project.org/doc/Rnews/Rnews_2007-2.pdf.
+    """
+
     def __init__(
         self,
         update_method: Literal["constant", "all"] = "all",
